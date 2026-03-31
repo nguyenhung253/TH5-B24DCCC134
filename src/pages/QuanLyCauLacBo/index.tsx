@@ -1,19 +1,25 @@
 import { useEffect } from 'react';
 import { Tabs } from 'antd';
-import { TeamOutlined, BarChartOutlined } from '@ant-design/icons';
+import { TeamOutlined, FileTextOutlined, UserOutlined, BarChartOutlined } from '@ant-design/icons';
 
 import ManageCauLacBo from './components/ManageCauLacBo';
+import ManageDonDangKy from './components/ManageDonDangKy';
+import ManageThanhVien from './components/ManageThanhVien';
 import BaoCaoThongKe from './components/BaoCaoThongKe';
+import { seedMockData } from '@/services/QuanLyCauLacBo/mockData';
 
 import './styles.less';
 
 const { TabPane } = Tabs;
 
 export default function QuanLyCauLacBoPage() {
+	useEffect(() => {
+		seedMockData();
+	}, []);
 
 	return (
-		<div className='quanlyvanbang-container'>
-			<div className='quanlyvanbang-card'>
+		<div className='quanlycaulacbo-container'>
+			<div className='quanlycaulacbo-card'>
 				<div className='page-header'>
 					<div className='header-left'>
 						<img src='/logo.png' alt='PTIT Logo' className='ptit-logo' />
@@ -24,13 +30,13 @@ export default function QuanLyCauLacBoPage() {
 					</div>
 				</div>
 
-				<Tabs defaultActiveKey='1' className='quanlyvanbang-tabs'>
+				<Tabs defaultActiveKey='1' className='quanlycaulacbo-tabs'>
 					<TabPane
 						key='1'
 						tab={
 							<span className='tab-label'>
 								<TeamOutlined />
-								Danh sách CLB
+								Danh sách câu lạc bộ
 							</span>
 						}
 					>
@@ -39,6 +45,30 @@ export default function QuanLyCauLacBoPage() {
 
 					<TabPane
 						key='2'
+						tab={
+							<span className='tab-label'>
+								<FileTextOutlined />
+								Quản lý đơn đăng ký
+							</span>
+						}
+					>
+						<ManageDonDangKy />
+					</TabPane>
+
+					<TabPane
+						key='3'
+						tab={
+							<span className='tab-label'>
+								<UserOutlined />
+								Quản lý thành viên
+							</span>
+						}
+					>
+						<ManageThanhVien />
+					</TabPane>
+
+					<TabPane
+						key='4'
 						tab={
 							<span className='tab-label'>
 								<BarChartOutlined />

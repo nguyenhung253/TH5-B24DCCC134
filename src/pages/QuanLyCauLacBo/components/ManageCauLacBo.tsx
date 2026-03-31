@@ -1,71 +1,74 @@
 import { useState, useEffect } from 'react';
 import { useModel } from 'umi';
-import { Table, Button, Modal, Form, Input, DatePicker, Space, Tag, message, Switch, Image, Upload } from 'antd';
+import {
+	Table,
+	Button,
+	Modal,
+	Form,
+	Input,
+	Switch,
+	Space,
+	Tag,
+	message,
+	Avatar,
+	DatePicker,
+	Upload,
+	Popconfirm,
+} from 'antd';
 import {
 	DeleteOutlined,
 	EditOutlined,
 	PlusOutlined,
 	TeamOutlined,
-	EyeOutlined,
+	UserOutlined,
 	UploadOutlined,
+	EyeOutlined,
 } from '@ant-design/icons';
-import { Editor } from '@tinymce/tinymce-react';
-import moment from 'moment';
-import type { UploadFile } from 'antd/es/upload/interface';
+import dayjs from 'dayjs';
+import TinyEditor from '@/components/TinyEditor';
 
 export default function ManageCauLacBo() {
-	const cauLacBoModel = useModel('QuanLyCauLacBo.CauLacBo');
+	const cauLacBoModel = useModel('QuanLyCauLacBo.cauLacBo');
+	const thanhVienModel = useModel('QuanLyCauLacBo.thanhVien');
 	const [isModalVisible, setIsModalVisible] = useState(false);
 	const [isEditing, setIsEditing] = useState(false);
 	const [selectedCauLacBo, setSelectedCauLacBo] = useState<any>(null);
+	const [isViewMembersVisible, setIsViewMembersVisible] = useState(false);
+	const [selectedMembers, setSelectedMembers] = useState<any[]>([]);
 	const [form] = Form.useForm();
-	const [moTaContent, setMoTaContent] = useState('');
-	const [fileList, setFileList] = useState<UploadFile[]>([]);
-	const [searchText, setSearchText] = useState('');
 
-
+	useEffect(() => {
+		cauLacBoModel.loadCauLacBo();
+		thanhVienModel.loadThanhVien();
+	}, []);
 
 	const handleOpenModal = (cauLacBo?: any) => {
 		if (cauLacBo) {
 			setIsEditing(true);
 			setSelectedCauLacBo(cauLacBo);
-			setMoTaContent(cauLacBo.moTa || '');
 			form.setFieldsValue({
-				tenCLB: cauLacBo.tenCLB,
-				ngayThanhLap: moment(cauLacBo.ngayThanhLap),
-				chuNhiemCLB: cauLacBo.chuNhiemCLB,
+				tenCauLacBo: cauLacBo.tenCauLacBo,
+				ngayThanhLap: dayjs(cauLacBo.ngayThanhLap),
+				moTa: cauLacBo.moTa,
+				chuNhiem: cauLacBo.chuNhiem,
 				hoatDong: cauLacBo.hoatDong,
 			});
-			if (cauLacBo.anhDaiDien) {
-				setFileList([
-					{
-						uid: '-1',
-						name: 'image.png',
-						status: 'done',
-						url: cauLacBo.anhDaiDien,
-					},
-				]);
-			}
 		} else {
 			setIsEditing(false);
 			setSelectedCauLacBo(null);
-			setMoTaContent('');
-			setFileList([]);
 			form.resetFields();
-			form.setFieldsValue({ hoatDong: true });
 		}
 		setIsModalVisible(true);
 	};
-
 	const handleSubmit = async (values: any) => {
 		try {
 			const cauLacBoData = {
-				tenCLB: values.tenCLB,
+				tenCauLacBo: values.tenCauLacBo,
 				ngayThanhLap: values.ngayThanhLap.format('YYYY-MM-DD'),
-				moTa: moTaContent,
-				chuNhiemCLB: values.chuNhiemCLB,
-				hoatDong: values.hoatDong || false,
-				anhDaiDien: fileList.length > 0 ? fileList[0].url || fileList[0].thumbUrl || '/logo.png' : '/logo.png',
+				moTa: values.moTa,
+				chuNhiem: values.chuNhiem,
+				hoatDong: values.hoatDong ?? true,
+				anhDaiDien: values.anhDaiDien,
 			};
 
 			if (isEditing && selectedCauLacBo) {
@@ -78,106 +81,73 @@ export default function ManageCauLacBo() {
 
 			setIsModalVisible(false);
 			form.resetFields();
-			setMoTaContent('');
-			setFileList([]);
 		} catch (error: any) {
 			message.error(error.message || 'Có lỗi xảy ra');
 		}
 	};
 
 	const handleDelete = (id: string) => {
-		Modal.confirm({
-			title: 'Xóa câu lạc bộ',
-			content: 'Bạn có chắc chắn muốn xóa câu lạc bộ này? Hành động này không thể hoàn tác.',
-			okText: 'Xóa',
-			cancelText: 'Hủy',
-			okButtonProps: { danger: true },
-			onOk() {
-				try {
-					cauLacBoModel.deleteCauLacBo(id);
-					message.success('Xóa câu lạc bộ thành công');
-				} catch (error: any) {
-					message.error(error.message || 'Có lỗi xảy ra');
-				}
-			},
-		});
+		try {
+			cauLacBoModel.deleteCauLacBo(id);
+			message.success('Xóa câu lạc bộ thành công');
+		} catch (error: any) {
+			message.error(error.message || 'Có lỗi xảy ra');
+		}
 	};
 
 	const handleViewMembers = (cauLacBo: any) => {
-		message.info(`Xem danh sách thành viên của ${cauLacBo.tenCLB}`);
-		// TODO: Navigate to members list
+		const members = thanhVienModel.getThanhVienByCauLacBo(cauLacBo.id);
+		setSelectedMembers(members);
+		setSelectedCauLacBo(cauLacBo);
+		setIsViewMembersVisible(true);
 	};
 
-	const handleUploadChange = ({ fileList: newFileList }: any) => {
-		setFileList(newFileList);
+	const uploadProps = {
+		name: 'file',
+		action: '/api/upload',
+		headers: {
+			authorization: 'authorization-text',
+		},
+		onChange(info: any) {
+			if (info.file.status === 'done') {
+				message.success(`${info.file.name} file uploaded successfully`);
+				form.setFieldsValue({ anhDaiDien: info.file.response.url });
+			} else if (info.file.status === 'error') {
+				message.error(`${info.file.name} file upload failed.`);
+			}
+		},
 	};
-
-	const beforeUpload = (file: File) => {
-		const isImage = file.type.startsWith('image/');
-		if (!isImage) {
-			message.error('Chỉ được upload file ảnh!');
-			return false;
-		}
-		const isLt2M = file.size / 1024 / 1024 < 2;
-		if (!isLt2M) {
-			message.error('Ảnh phải nhỏ hơn 2MB!');
-			return false;
-		}
-
-		// Convert to base64 for preview
-		const reader = new FileReader();
-		reader.readAsDataURL(file);
-		reader.onload = () => {
-			setFileList([
-				{
-					uid: file.uid,
-					name: file.name,
-					status: 'done',
-					url: reader.result as string,
-				},
-			]);
-		};
-		return false;
-	};
-
-	// Filter data based on search
-	const filteredData = cauLacBoModel.cauLacBos.filter((clb) => {
-		const searchLower = searchText.toLowerCase();
-		return clb.tenCLB.toLowerCase().includes(searchLower) || clb.chuNhiemCLB.toLowerCase().includes(searchLower);
-	});
-
 	const columns = [
 		{
 			title: 'Ảnh đại diện',
 			dataIndex: 'anhDaiDien',
 			key: 'anhDaiDien',
-			width: 100,
+			width: 80,
+			align: 'center' as const,
 			render: (anhDaiDien: string) => (
-				<Image src={anhDaiDien} width={60} height={60} style={{ objectFit: 'cover', borderRadius: 8 }} />
+				<Avatar src={anhDaiDien} icon={<TeamOutlined />} size={50} style={{ backgroundColor: '#1890ff' }} />
 			),
 		},
 		{
 			title: 'Tên câu lạc bộ',
-			dataIndex: 'tenCLB',
-			key: 'tenCLB',
-			width: 200,
-			sorter: (a: any, b: any) => a.tenCLB.localeCompare(b.tenCLB),
-			render: (tenCLB: string) => <strong>{tenCLB}</strong>,
+			dataIndex: 'tenCauLacBo',
+			key: 'tenCauLacBo',
+			sorter: (a: any, b: any) => a.tenCauLacBo.localeCompare(b.tenCauLacBo),
 		},
 		{
 			title: 'Ngày thành lập',
 			dataIndex: 'ngayThanhLap',
 			key: 'ngayThanhLap',
 			width: 150,
+			align: 'center' as const,
 			sorter: (a: any, b: any) => new Date(a.ngayThanhLap).getTime() - new Date(b.ngayThanhLap).getTime(),
-			render: (ngayThanhLap: string) => moment(ngayThanhLap).format('DD/MM/YYYY'),
+			render: (ngayThanhLap: string) => dayjs(ngayThanhLap).format('DD/MM/YYYY'),
 		},
 		{
 			title: 'Chủ nhiệm CLB',
-			dataIndex: 'chuNhiemCLB',
-			key: 'chuNhiemCLB',
-			width: 150,
-			sorter: (a: any, b: any) => a.chuNhiemCLB.localeCompare(b.chuNhiemCLB),
+			dataIndex: 'chuNhiem',
+			key: 'chuNhiem',
+			sorter: (a: any, b: any) => a.chuNhiem.localeCompare(b.chuNhiem),
 		},
 		{
 			title: 'Hoạt động',
@@ -190,35 +160,70 @@ export default function ManageCauLacBo() {
 				{ text: 'Không', value: false },
 			],
 			onFilter: (value: any, record: any) => record.hoatDong === value,
-			render: (hoatDong: boolean) => <Tag color={hoatDong ? 'success' : 'default'}>{hoatDong ? 'Có' : 'Không'}</Tag>,
-		},
-		{
-			title: 'Ngày tạo',
-			dataIndex: 'ngayTao',
-			key: 'ngayTao',
-			width: 120,
-			sorter: (a: any, b: any) => new Date(a.ngayTao).getTime() - new Date(b.ngayTao).getTime(),
-			render: (ngayTao: string) => moment(ngayTao).format('DD/MM/YYYY'),
+			render: (hoatDong: boolean) => (
+				<Tag color={hoatDong ? 'success' : 'default'} className={`status-tag ${hoatDong ? 'active' : 'inactive'}`}>
+					{hoatDong ? 'Có' : 'Không'}
+				</Tag>
+			),
 		},
 		{
 			title: 'Hành động',
 			key: 'action',
-			width: 200,
+			width: 320,
 			align: 'center' as const,
-			fixed: 'right' as const,
 			render: (_: any, record: any) => (
-				<Space size='small' className='action-buttons'>
+				<Space size='small' className='action-buttons club-action-buttons'>
 					<Button type='link' icon={<EyeOutlined />} onClick={() => handleViewMembers(record)}>
 						Thành viên
 					</Button>
 					<Button type='link' icon={<EditOutlined />} onClick={() => handleOpenModal(record)}>
 						Sửa
 					</Button>
-					<Button type='text' danger icon={<DeleteOutlined />} onClick={() => handleDelete(record.id)}>
-						Xóa
-					</Button>
+					<Popconfirm
+						title='Xóa câu lạc bộ'
+						description='Bạn có chắc chắn muốn xóa câu lạc bộ này?'
+						onConfirm={() => handleDelete(record.id)}
+						okText='Xóa'
+						cancelText='Hủy'
+					>
+						<Button type='text' danger icon={<DeleteOutlined />}>
+							Xóa
+						</Button>
+					</Popconfirm>
 				</Space>
 			),
+		},
+	];
+	const memberColumns = [
+		{
+			title: 'Họ tên',
+			dataIndex: 'hoTen',
+			key: 'hoTen',
+		},
+		{
+			title: 'Email',
+			dataIndex: 'email',
+			key: 'email',
+		},
+		{
+			title: 'Số điện thoại',
+			dataIndex: 'soDienThoai',
+			key: 'soDienThoai',
+		},
+		{
+			title: 'Giới tính',
+			dataIndex: 'gioiTinh',
+			key: 'gioiTinh',
+			width: 100,
+			align: 'center' as const,
+		},
+		{
+			title: 'Ngày tham gia',
+			dataIndex: 'ngayThamGia',
+			key: 'ngayThamGia',
+			width: 150,
+			align: 'center' as const,
+			render: (ngayThamGia: string) => dayjs(ngayThamGia).format('DD/MM/YYYY'),
 		},
 	];
 
@@ -233,22 +238,11 @@ export default function ManageCauLacBo() {
 				</Button>
 			</div>
 
-			<div style={{ marginBottom: 16 }}>
-				<Input.Search
-					placeholder='Tìm kiếm theo tên CLB hoặc chủ nhiệm...'
-					allowClear
-					onSearch={setSearchText}
-					onChange={(e) => setSearchText(e.target.value)}
-					style={{ width: 400 }}
-				/>
-			</div>
-
 			<Table
 				columns={columns}
-				dataSource={filteredData}
+				dataSource={cauLacBoModel.cauLacBos}
 				rowKey='id'
 				loading={cauLacBoModel.loading}
-				scroll={{ x: 1200 }}
 				pagination={{
 					pageSize: 10,
 					showSizeChanger: true,
@@ -256,39 +250,25 @@ export default function ManageCauLacBo() {
 				}}
 			/>
 
+			{/* Modal thêm/sửa câu lạc bộ */}
 			<Modal
 				title={isEditing ? 'Chỉnh sửa câu lạc bộ' : 'Thêm câu lạc bộ mới'}
 				visible={isModalVisible}
 				onOk={() => form.submit()}
-				onCancel={() => {
-					setIsModalVisible(false);
-					setMoTaContent('');
-					setFileList([]);
-				}}
+				onCancel={() => setIsModalVisible(false)}
 				width={800}
 				confirmLoading={cauLacBoModel.loading}
 			>
 				<Form form={form} layout='vertical' onFinish={handleSubmit}>
-					<Form.Item label='Ảnh đại diện'>
-						<Upload
-							listType='picture-card'
-							fileList={fileList}
-							onChange={handleUploadChange}
-							beforeUpload={beforeUpload}
-							maxCount={1}
-						>
-							{fileList.length === 0 && (
-								<div>
-									<UploadOutlined />
-									<div style={{ marginTop: 8 }}>Upload</div>
-								</div>
-							)}
+					<div className='avatar-upload'>
+						<Upload {...uploadProps} showUploadList={false}>
+							<Button icon={<UploadOutlined />}>Tải lên ảnh đại diện</Button>
 						</Upload>
-					</Form.Item>
+					</div>
 
 					<Form.Item
 						label='Tên câu lạc bộ'
-						name='tenCLB'
+						name='tenCauLacBo'
 						rules={[{ required: true, message: 'Vui lòng nhập tên câu lạc bộ' }]}
 					>
 						<Input placeholder='Nhập tên câu lạc bộ' />
@@ -299,36 +279,44 @@ export default function ManageCauLacBo() {
 						name='ngayThanhLap'
 						rules={[{ required: true, message: 'Vui lòng chọn ngày thành lập' }]}
 					>
-						<DatePicker placeholder='Chọn ngày thành lập' style={{ width: '100%' }} format='DD/MM/YYYY' />
-					</Form.Item>
-
-					<Form.Item label='Mô tả'>
-						<Editor
-							apiKey='your-tinymce-api-key'
-							value={moTaContent}
-							init={{
-								height: 300,
-								menubar: false,
-								plugins: ['lists', 'link', 'image', 'charmap', 'preview', 'anchor', 'searchreplace', 'code'],
-								toolbar:
-									'undo redo | formatselect | bold italic | alignleft aligncenter alignright | bullist numlist | link image | code',
-							}}
-							onEditorChange={(content) => setMoTaContent(content)}
-						/>
+						<DatePicker style={{ width: '100%' }} format='DD/MM/YYYY' placeholder='Chọn ngày thành lập' />
 					</Form.Item>
 
 					<Form.Item
 						label='Chủ nhiệm CLB'
-						name='chuNhiemCLB'
+						name='chuNhiem'
 						rules={[{ required: true, message: 'Vui lòng nhập tên chủ nhiệm' }]}
 					>
-						<Input placeholder='Nhập tên chủ nhiệm CLB' />
+						<Input placeholder='Nhập tên chủ nhiệm câu lạc bộ' />
 					</Form.Item>
 
-					<Form.Item label='Hoạt động' name='hoatDong' valuePropName='checked'>
+					<Form.Item label='Mô tả' name='moTa' rules={[{ required: true, message: 'Vui lòng nhập mô tả' }]}>
+						<TinyEditor placeholder='Nhập mô tả về câu lạc bộ' />
+					</Form.Item>
+
+					<Form.Item label='Hoạt động' name='hoatDong' valuePropName='checked' initialValue={true}>
 						<Switch checkedChildren='Có' unCheckedChildren='Không' />
 					</Form.Item>
 				</Form>
+			</Modal>
+
+			{/* Modal xem danh sách thành viên */}
+			<Modal
+				title={`Danh sách thành viên - ${selectedCauLacBo?.tenCauLacBo}`}
+				visible={isViewMembersVisible}
+				onCancel={() => setIsViewMembersVisible(false)}
+				footer={null}
+				width={1000}
+			>
+				<Table
+					columns={memberColumns}
+					dataSource={selectedMembers}
+					rowKey='id'
+					pagination={{
+						pageSize: 5,
+						showTotal: (total) => `Tổng ${total} thành viên`,
+					}}
+				/>
 			</Modal>
 		</div>
 	);

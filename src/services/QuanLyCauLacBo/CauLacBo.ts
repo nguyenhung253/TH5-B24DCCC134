@@ -1,41 +1,76 @@
-import { ICauLacBo } from './types';
+import { ICauLacBo, IFormCauLacBo } from './types';
 
-export const cauLacBoService = {
-	// Validate dữ liệu câu lạc bộ
-	validateCauLacBo: (data: Partial<ICauLacBo>): string[] => {
+class CauLacBoService {
+	validateCauLacBo(data: IFormCauLacBo): string[] {
 		const errors: string[] = [];
 
-		if (!data.tenCLB || data.tenCLB.trim().length === 0) {
+		if (!data.tenCauLacBo?.trim()) {
 			errors.push('Tên câu lạc bộ không được để trống');
 		}
 
 		if (!data.ngayThanhLap) {
 			errors.push('Ngày thành lập không được để trống');
+		} else {
+			const ngayThanhLap = new Date(data.ngayThanhLap);
+			const today = new Date();
+			if (ngayThanhLap > today) {
+				errors.push('Ngày thành lập không được lớn hơn ngày hiện tại');
+			}
 		}
 
-		if (!data.chuNhiemCLB || data.chuNhiemCLB.trim().length === 0) {
-			errors.push('Chủ nhiệm CLB không được để trống');
+		if (!data.chuNhiem?.trim()) {
+			errors.push('Chủ nhiệm câu lạc bộ không được để trống');
+		}
+
+		if (!data.moTa?.trim()) {
+			errors.push('Mô tả không được để trống');
 		}
 
 		return errors;
-	},
+	}
 
-	// Kiểm tra tên CLB đã tồn tại chưa
-	isTenCLBExists: (cauLacBos: ICauLacBo[], tenCLB: string, excludeId?: string): boolean => {
-		return cauLacBos.some((clb) => clb.tenCLB.toLowerCase() === tenCLB.toLowerCase() && clb.id !== excludeId);
-	},
+	checkDuplicateName(cauLacBos: ICauLacBo[], tenCauLacBo: string, excludeId?: string): boolean {
+		return cauLacBos.some((clb) => clb.tenCauLacBo.toLowerCase() === tenCauLacBo.toLowerCase() && clb.id !== excludeId);
+	}
 
-	// Lọc CLB đang hoạt động
-	getActiveCauLacBos: (cauLacBos: ICauLacBo[]): ICauLacBo[] => {
-		return cauLacBos.filter((clb) => clb.hoatDong);
-	},
+	searchCauLacBos(cauLacBos: ICauLacBo[], keyword: string): ICauLacBo[] {
+		if (!keyword.trim()) return cauLacBos;
 
-	// Sắp xếp theo ngày thành lập
-	sortByNgayThanhLap: (cauLacBos: ICauLacBo[], order: 'asc' | 'desc' = 'desc'): ICauLacBo[] => {
+		const searchTerm = keyword.toLowerCase();
+		return cauLacBos.filter(
+			(clb) =>
+				clb.tenCauLacBo.toLowerCase().includes(searchTerm) ||
+				clb.chuNhiem.toLowerCase().includes(searchTerm) ||
+				clb.moTa.toLowerCase().includes(searchTerm),
+		);
+	}
+
+	sortCauLacBos(cauLacBos: ICauLacBo[], sortField: string, sortOrder: 'asc' | 'desc'): ICauLacBo[] {
 		return [...cauLacBos].sort((a, b) => {
-			const dateA = new Date(a.ngayThanhLap).getTime();
-			const dateB = new Date(b.ngayThanhLap).getTime();
-			return order === 'asc' ? dateA - dateB : dateB - dateA;
+			let aValue: any = a[sortField as keyof ICauLacBo];
+			let bValue: any = b[sortField as keyof ICauLacBo];
+
+			if (sortField === 'ngayThanhLap' || sortField === 'ngayTao') {
+				aValue = new Date(aValue).getTime();
+				bValue = new Date(bValue).getTime();
+			}
+
+			if (typeof aValue === 'string') {
+				aValue = aValue.toLowerCase();
+				bValue = bValue.toLowerCase();
+			}
+
+			if (sortOrder === 'asc') {
+				return aValue > bValue ? 1 : -1;
+			} else {
+				return aValue < bValue ? 1 : -1;
+			}
 		});
-	},
-};
+	}
+
+	getActiveCauLacBos(cauLacBos: ICauLacBo[]): ICauLacBo[] {
+		return cauLacBos.filter((clb) => clb.hoatDong);
+	}
+}
+
+export const cauLacBoService = new CauLacBoService();

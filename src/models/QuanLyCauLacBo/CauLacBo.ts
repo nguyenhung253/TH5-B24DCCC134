@@ -1,113 +1,134 @@
-import { useState, useCallback, useEffect } from 'react';
-import { ICauLacBo } from '@/services/QuanLyCauLacBo/types';
-import { cauLacBoService } from '@/services/QuanLyCauLacBo/CauLacBo';
-
-const STORAGE_KEY = 'clb_cau_lac_bo';
+import { useEffect, useState } from 'react';
+import { ICauLacBo, IFormCauLacBo } from '@/services/QuanLyCauLacBo/types';
+import { cauLacBoService } from '@/services/QuanLyCauLacBo/cauLacBo';
+import { STORAGE_KEYS } from '@/services/QuanLyCauLacBo/mockData';
 
 export default () => {
 	const [cauLacBos, setCauLacBos] = useState<ICauLacBo[]>([]);
 	const [loading, setLoading] = useState(false);
 
+	useEffect(() => {
+		loadCauLacBo();
+	}, []);
 
-
-
-	const loadCauLacBos = useCallback(() => {
+	const loadCauLacBo = () => {
 		try {
-			const data = localStorage.getItem(STORAGE_KEY);
+			const data = localStorage.getItem(STORAGE_KEYS.CAU_LAC_BO);
 			if (data) {
 				const parsed = JSON.parse(data);
 				setCauLacBos(parsed);
 			}
 		} catch (error) {
-			console.error('Error loading cau lac bo:', error);
+			console.error('Lỗi khi load câu lạc bộ :', error);
 		}
-	}, []);
+	};
 
-	const saveCauLacBos = useCallback((data: ICauLacBo[]) => {
+	const saveCauLacBo = (data: ICauLacBo[]) => {
 		try {
-			localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+			localStorage.setItem(STORAGE_KEYS.CAU_LAC_BO, JSON.stringify(data));
 			setCauLacBos(data);
 		} catch (error) {
-			console.error('Error saving cau lac bo:', error);
+			console.error('Lỗi khi lưu câu lạc bộ :', error);
 		}
-	}, []);
+	};
 
-	const addCauLacBo = useCallback(
-		(cauLacBoData: Omit<ICauLacBo, 'id' | 'ngayTao'>) => {
-			setLoading(true);
-			try {
-
-				const errors = cauLacBoService.validateCauLacBo(cauLacBoData);
-				if (errors.length > 0) {
-					throw new Error(errors.join(', '));
-				}
-
-				if (cauLacBoService.isTenCLBExists(cauLacBos, cauLacBoData.tenCLB)) {
-					throw new Error(`Tên câu lạc bộ "${cauLacBoData.tenCLB}" đã tồn tại`);
-				}
-
-				const newCauLacBo: ICauLacBo = {
-					id: Date.now().toString(),
-					...cauLacBoData,
-					ngayTao: new Date().toISOString(),
-				};
-
-				const newData = [...cauLacBos, newCauLacBo];
-				saveCauLacBos(newData);
-				return newCauLacBo;
-			} catch (error) {
-				throw error;
-			} finally {
-				setLoading(false);
+	const addCauLacBo = (cauLacBoData: IFormCauLacBo) => {
+		setLoading(true);
+		try {
+			const errors = cauLacBoService.validateCauLacBo(cauLacBoData);
+			if (errors.length > 0) {
+				throw new Error(errors.join(', '));
 			}
-		},
-		[cauLacBos, saveCauLacBos],
-	);
 
-	const updateCauLacBo = useCallback(
-		(id: string, updates: Partial<ICauLacBo>) => {
-			setLoading(true);
-			try {
-				const newData = cauLacBos.map((clb) => (clb.id === id ? { ...clb, ...updates } : clb));
-				saveCauLacBos(newData);
-			} catch (error) {
-				throw error;
-			} finally {
-				setLoading(false);
+			if (cauLacBoService.checkDuplicateName(cauLacBos, cauLacBoData.tenCauLacBo)) {
+				throw new Error(`Tên câu lạc bộ "${cauLacBoData.tenCauLacBo}" đã tồn tại`);
 			}
-		},
-		[cauLacBos, saveCauLacBos],
-	);
 
-	const deleteCauLacBo = useCallback(
-		(id: string) => {
-			setLoading(true);
-			try {
-				const newData = cauLacBos.filter((clb) => clb.id !== id);
-				saveCauLacBos(newData);
-			} catch (error) {
-				throw error;
-			} finally {
-				setLoading(false);
+			const newCauLacBo: ICauLacBo = {
+				id: Date.now().toString(),
+				...cauLacBoData,
+				ngayTao: new Date().toISOString(),
+			};
+
+			const newData = [...cauLacBos, newCauLacBo];
+			saveCauLacBo(newData);
+			return newCauLacBo;
+		} catch (error) {
+			throw error;
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const updateCauLacBo = (id: string, updates: IFormCauLacBo) => {
+		setLoading(true);
+		try {
+			const errors = cauLacBoService.validateCauLacBo(updates);
+			if (errors.length > 0) {
+				throw new Error(errors.join(', '));
 			}
-		},
-		[cauLacBos, saveCauLacBos],
-	);
 
-	const getCauLacBoById = useCallback(
-		(id: string): ICauLacBo | undefined => {
-			return cauLacBos.find((clb) => clb.id === id);
-		},
-		[cauLacBos],
-	);
+			if (cauLacBoService.checkDuplicateName(cauLacBos, updates.tenCauLacBo, id)) {
+				throw new Error(`Tên câu lạc bộ "${updates.tenCauLacBo}" đã tồn tại`);
+			}
+
+			const newData = cauLacBos.map((clb) =>
+				clb.id === id
+					? {
+							...clb,
+							...updates,
+							ngayCapNhat: new Date().toISOString(),
+					  }
+					: clb,
+			);
+			saveCauLacBo(newData);
+		} catch (error) {
+			throw error;
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const deleteCauLacBo = (id: string) => {
+		setLoading(true);
+		try {
+			const newData = cauLacBos.filter((clb) => clb.id !== id);
+			saveCauLacBo(newData);
+		} catch (error) {
+			throw error;
+		} finally {
+			setLoading(false);
+		}
+	};
+
+	const getCauLacBoById = (id: string): ICauLacBo | undefined => {
+		return cauLacBos.find((clb) => clb.id === id);
+	};
+
+	const getActiveCauLacBo = (): ICauLacBo[] => {
+		return cauLacBos.filter((clb) => clb.hoatDong);
+	};
+
+	const searchCauLacBo = (keyword: string): ICauLacBo[] => {
+		if (!keyword.trim()) return cauLacBos;
+		const searchTerm = keyword.toLowerCase();
+		return cauLacBos.filter(
+			(clb) =>
+				clb.tenCauLacBo.toLowerCase().includes(searchTerm) ||
+				clb.chuNhiem.toLowerCase().includes(searchTerm) ||
+				clb.moTa.toLowerCase().includes(searchTerm),
+		);
+	};
 
 	return {
 		cauLacBos,
 		loading,
-		loadCauLacBos,
+		loadCauLacBo,
 		addCauLacBo,
 		updateCauLacBo,
 		deleteCauLacBo,
 		getCauLacBoById,
+		getActiveCauLacBo,
+		searchCauLacBo,
 	};
 };

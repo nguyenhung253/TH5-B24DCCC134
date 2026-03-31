@@ -36,6 +36,12 @@
 		component: './RandomUser',
 		icon: 'ArrowsAltOutlined',
 	},
+	{
+		path: '/quan-ly-cau-lac-bo',
+		name: 'QuanLyCauLacBo',
+		component: './QuanLyCauLacBo',
+		icon: 'TeamOutlined',
+	},
 
 	// DANH MUC HE THONG
 	// {
